@@ -1,5 +1,5 @@
 {
-  "name": "billar-jade-full"
+  "name": "billar-jade-full",
   "version": "2.0.0",
   "description": "Billar Jade (backend+frontend) para Render con Postgres, roles, descuentos, reapertura y ticket 80mm",
   "main": "server.js",
