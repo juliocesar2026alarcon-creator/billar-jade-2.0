@@ -1,0 +1,24 @@
+{
+  "name": "billar-jade-full",
+  "version": "2.0.0",
+  "description": "Billar Jade (backend+frontend) para Render con Postgres, roles, descuentos, reapertura y ticket 80mm",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "db:setup": "node scripts/init-db.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "moment": "^2.30.1",
+    "moment-timezone": "^0.5.45",
+    "pg": "^8.11.3"
+  }
+}

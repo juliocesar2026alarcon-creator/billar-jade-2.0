@@ -1,0 +1,260 @@
+
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Billar Jade 2.0</title>
+<style>
+:root{ --bg:#0b1220; --fg:#e8f0ff; --muted:#b9c6e6; --card:#121a2b; --accent:#22d3ee; --warn:#ffb4b4; }
+body{ margin:0; font-family:system-ui,Arial; background:var(--bg); color:var(--fg); }
+header{ display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #223; position:sticky; top:0; background:var(--bg); z-index:10; }
+button, input, select{ background:#0f1a31; color:var(--fg); border:1px solid #2a3b5f; padding:8px 10px; border-radius:8px; }
+button.primary{ background:var(--accent); color:#00222a; border:none; font-weight:700; }
+.grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; padding:16px; }
+.card{ background:var(--card); border:1px solid #1d2740; border-radius:12px; padding:12px; }
+.row{ display:flex; gap:8px; flex-wrap:wrap; }
+.clock{ font-size:28px; font-weight:800; letter-spacing:1px; }
+.hidden{ display:none; }
+.modal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.6); }
+.modal .box{ background:var(--card); border:1px solid #334; border-radius:12px; padding:16px; width:min(96vw,720px); max-height:90vh; overflow:auto; }
+table{ width:100%; border-collapse:collapse; }
+th,td{ padding:6px; border-bottom:1px solid #24304d; text-align:left; }
+.ticket{ white-space:pre; background:#050a16; border:1px dashed #334; padding:12px; border-radius:8px; }
+.center{ max-width:420px; margin:8vh auto; background:var(--card); border:1px solid #1d2740; border-radius:12px; padding:16px; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login" class="center">
+  <h2>Iniciar sesión</h2>
+  <label>Usuario<br><input id="u" autocomplete="username"></label><br><br>
+  <label>Contraseña<br><input id="p" type="password" autocomplete="current-password"></label><br><br>
+  <button class="primary" onclick="login()">Entrar</button>
+  <p style="color:var(--muted); font-size:12px">Admin: admin/123456 · Cajero: cajero/1234</p>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+<header>
+  <div class="row">
+    <strong>Billar Jade 2.0</strong>
+    <label>Sucursal <select id="sucursal"></select></label>
+    <span id="rolBadge" style="opacity:.8"></span>
+  </div>
+  <div class="clock" id="clock">--:--:--</div>
+  <div class="row">
+    <button onclick="ver('caja')">Caja</button>
+    <button onclick="ver('inventario')">Inventario</button>
+    <button onclick="ver('reportes')">Reportes</button>
+    <button onclick="logout()">Salir</button>
+  </div>
+</header>
+
+<main>
+  <div id="alertas" class="hidden" style="padding:8px 16px; color:var(--warn)"></div>
+
+  <!-- CAJA -->
+  <section id="vista-caja">
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <!-- INVENTARIO -->
+  <section id="vista-inventario" class="hidden" style="padding:16px">
+    <h3>Inventario</h3>
+    <div class="row">
+      <button onclick="cargarProductos(false)">Todos</button>
+      <button onclick="cargarProductos(true)">Favoritos</button>
+    </div>
+    <table>
+      <thead><tr><th>Código</th><th>Producto</th><th>Precio</th><th>Stock</th><th>Stock mín</th><th></th></tr></thead>
+      <tbody id="inv"></tbody>
+    </table>
+  </section>
+
+  <!-- REPORTES -->
+  <section id="vista-reportes" class="hidden" style="padding:16px">
+    <h3>Ventas recientes</h3>
+    <table>
+      <thead><tr><th>Fecha</th><th>Mesa</th><th>Usuario</th><th>Método</th><th>Total</th></tr></thead>
+      <tbody id="rep"></tbody>
+    </table>
+  </section>
+</main>
+</div>
+
+<!-- MODALES -->
+<div class="modal" id="modalConsumo"><div class="box">
+  <h3>Agregar consumo — <span id="consumoMesa"></span></h3>
+  <div class="row"><input id="buscar" placeholder="Buscar" oninput="renderProductos()"><label><input type="checkbox" id="soloFavoritos" checked onchange="cargarProductos(true)"> Favoritos</label></div>
+  <table><thead><tr><th>Código</th><th>Nombre</th><th>Precio</th><th>Stock</th><th></th></tr></thead><tbody id="listaProductos"></tbody></table>
+  <div style="text-align:right"><button onclick="cerrar('modalConsumo')">Cerrar</button></div>
+</div></div>
+
+<div class="modal" id="modalCierre"><div class="box">
+  <h3>Cerrar mesa — <span id="cierreMesa"></span></h3>
+  <div id="cierreDatos"></div>
+  <h4>Ticket 80mm (previa)</h4>
+  <pre class="ticket" id="ticketPreview"></pre>
+  <div class="row" style="justify-content:flex-end">
+    <label>Método <select id="metodoPago"><option>Efectivo</option><option>QR</option><option>Cortesía</option></select></label>
+    <label>Descuento (%) <input id="descPct" type="number" min="0" max="100" value="0" style="width:80px"></label>
+    <button class="primary" onclick="confirmarCierre()">Confirmar</button>
+    <button onclick="cerrar('modalCierre')">Cancelar</button>
+  </div>
+</div></div>
+
+<div class="modal" id="modalReabrir"><div class="box">
+  <h3>Reabrir sesión (Supervisor)</h3>
+  <label>PIN <input id="pin" type="password" style="width:120px"></label>
+  <label>Motivo <input id="motivo" style="width:240px"></label>
+  <div class="row" style="justify-content:flex-end"><button class="primary" onclick="reabrir()">Reabrir</button><button onclick="cerrar('modalReabrir')">Cancelar</button></div>
+</div></div>
+
+<script>
+const api = {
+  async fetch(path, opts={}){
+    const token = localStorage.getItem('token');
+    opts.headers = Object.assign({'Content-Type':'application/json'}, opts.headers||{});
+    if(token) opts.headers['Authorization'] = 'Bearer '+token;
+    const r = await fetch(path, opts);
+    if(r.status===401){ alert('Sesión vencida'); logout(); return { ok:false }; }
+    return r.json();
+  }
+};
+
+let estado = { user:null, sucursalId:null, mesas:[], sesionCierre:null, mesaCierre:null };
+
+function ver(v){
+  document.getElementById('vista-caja').classList.add('hidden');
+  document.getElementById('vista-inventario').classList.add('hidden');
+  document.getElementById('vista-reportes').classList.add('hidden');
+  if(v==='caja'){ document.getElementById('vista-caja').classList.remove('hidden'); }
+  if(v==='inventario'){ document.getElementById('vista-inventario').classList.remove('hidden'); cargarProductos(false); }
+  if(v==='reportes'){ document.getElementById('vista-reportes').classList.remove('hidden'); cargarReportes(); }
+}
+
+function tickClock(){ const d=new Date(); const h=String(d.getHours()).padStart(2,'0'); const m=String(d.getMinutes()).padStart(2,'0'); const s=String(d.getSeconds()).padStart(2,'0'); document.getElementById('clock').textContent=`${h}:${m}:${s}`; }
+setInterval(tickClock,1000); tickClock();
+
+async function login(){
+  const usuario=document.getElementById('u').value.trim();
+  const password=document.getElementById('p').value;
+  const j = await api.fetch('/api/auth/login',{ method:'POST', body: JSON.stringify({usuario,password}) });
+  if(!j.ok){ alert(j.error||'No se pudo iniciar sesión'); return; }
+  localStorage.setItem('token', j.token);
+  estado.user = j.user;
+  document.getElementById('login').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('rolBadge').textContent = j.user.rol;
+  await cargarSucursales();
+}
+function logout(){ localStorage.removeItem('token'); location.reload(); }
+
+async function cargarSucursales(){
+  const j = await api.fetch('/api/sucursales');
+  const sel = document.getElementById('sucursal'); sel.innerHTML='';
+  j.data.forEach(s=>{ const o=document.createElement('option'); o.value=s.id; o.textContent=s.nombre; sel.appendChild(o); });
+  estado.sucursalId = j.data[0].id; sel.value = estado.sucursalId;
+  sel.onchange = ()=>{ estado.sucursalId=Number(sel.value); cargarMesas(); };
+  cargarMesas();
+}
+
+async function cargarMesas(){
+  const j = await api.fetch(`/api/mesas?sucursal_id=${estado.sucursalId}`);
+  estado.mesas = j.data||[];
+  renderMesas();
+  cargarAlertas();
+}
+setInterval(cargarMesas, 5000);
+
+function renderMesas(){
+  const g=document.getElementById('grid'); g.innerHTML='';
+  estado.mesas.forEach(m=>{
+    const div=document.createElement('div'); div.className='card';
+    div.innerHTML=`<div style='display:flex; justify-content:space-between'><div><b>${m.codigo}</b></div><div style='opacity:.7'>${m.estado}</div></div>`+
+      (m.estado==='ocupada'?`<div style='margin:6px 0'>Inicio: ${m.inicio_local} · ${m.minutos} min · Estimado: ${money(m.monto_estimado_bs)}</div>`:'')+
+      `<div class='row'>`+
+      (m.estado==='libre'?`<button class='primary' onclick='iniciar(${m.id})'>Iniciar</button>`:'')+
+      (m.estado==='ocupada'?`<button onclick='abrirConsumo(${m.id})'>Consumo</button>`:'')+
+      (m.estado==='ocupada'?`<button class='primary' onclick='abrirCierre(${m.id})'>Cerrar</button>`:'')+
+      (estado.user.rol==='ADMIN' && m.estado==='ocupada'?`<button onclick='abrirReapertura(${m.sesion_id})'>Reabrir</button>`:'')+
+      `</div>`;
+    g.appendChild(div);
+  });
+}
+
+async function iniciar(mesa_id){
+  const nota = prompt('Nota / jugador (opcional)')||'';
+  const j = await api.fetch('/api/sesiones/iniciar',{ method:'POST', body: JSON.stringify({ mesa_id, nota }) });
+  if(!j.ok){ alert(j.error||'No se pudo iniciar'); return; }
+  cargarMesas();
+}
+
+let mesaConsumoId=null;
+function abrirConsumo(mesa_id){ mesaConsumoId=mesa_id; document.getElementById('consumoMesa').textContent = estado.mesas.find(m=>m.id===mesa_id).codigo; cargarProductos(true); abrir('modalConsumo'); }
+
+function abrir(id){ document.getElementById(id).style.display='flex'; }
+function cerrar(id){ document.getElementById(id).style.display='none'; }
+
+async function cargarProductos(favoritos){
+  const j = await api.fetch(`/api/productos?favoritos=${!!favoritos}`);
+  window.__prod = j.data||[]; renderProductos();
+}
+function renderProductos(){
+  const q=(document.getElementById('buscar')?.value||'').toLowerCase();
+  const tbody=document.getElementById('listaProductos'); if(!tbody) return; tbody.innerHTML='';
+  (window.__prod||[]).filter(p=> p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q) ).forEach(p=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${p.codigo}</td><td>${p.nombre}</td><td>${money(p.precio)}</td><td>${p.stock}</td><td><button onclick='agregar(${p.id})'>+</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+async function agregar(producto_id){
+  const qty = Number(prompt('Cantidad','1')||'1');
+  const mesa = estado.mesas.find(m=>m.id===mesaConsumoId);
+  const j = await api.fetch(`/api/sesiones/${mesa.sesion_id}/consumos`,{ method:'POST', body: JSON.stringify({ producto_id, cantidad: qty }) });
+  if(!j.ok){ alert(j.error||'Error'); return; }
+  alert('Agregado'); cargarMesas();
+}
+
+async function abrirCierre(mesa_id){
+  const mesa = estado.mesas.find(m=>m.id===mesa_id);
+  const j = await api.fetch(`/api/mesas?sucursal_id=${estado.sucursalId}`); // refresco para tener sesion_id
+  const m2 = j.data.find(x=>x.id===mesa_id);
+  estado.mesaCierre = m2;
+  // simular cierre preliminar (server calcula al cerrar)
+  const jr = await api.fetch(`/api/sesiones/${m2.sesion_id}/cerrar`,{ method:'POST', body: JSON.stringify({ metodo_pago: document.getElementById('metodoPago').value||'Efectivo', descuento_pct: Number(document.getElementById('descPct').value||0) }) });
+  if(!jr.ok){ alert(jr.error||'No se pudo calcular'); return; }
+  estado.sesionCierre = jr;
+  document.getElementById('cierreMesa').textContent = m2.codigo;
+  document.getElementById('cierreDatos').innerHTML = `
+    <p><b>Inicio:</b> ${jr.hora_inicio_local} — <b>Fin:</b> ${jr.hora_fin_local}</p>
+    <p><b>Tiempo:</b> ${jr.minutos_reales} → ${jr.minutos_cobrables} min</p>
+    <p><b>Importe tiempo:</b> ${money(jr.monto_tiempo_bs)}</p>
+    <h4>Consumos</h4>
+    ${(jr.consumos||[]).length?'<ul>'+jr.consumos.map(it=>`<li>x${it.cantidad} ${it.nombre} — ${money(it.total_bs)}</li>`).join('')+'</ul>':'(sin consumos)'}
+    <p><b>Subtotal consumos:</b> ${money(jr.subtotal_consumos_bs)}</p>
+    ${jr.descuento_pct?`<p><b>Descuento:</b> ${jr.descuento_pct}% (${money(jr.descuento_bs)})</p>`:''}
+    <h3>Total: ${money(jr.total_bs)}</h3>`;
+  document.getElementById('ticketPreview').textContent = jr.ticket_text;
+  abrir('modalCierre');
+}
+async function confirmarCierre(){ cerrar('modalCierre'); cargarMesas(); }
+
+function abrirReapertura(sesion_id){ window.__reabrir = sesion_id; abrir('modalReabrir'); }
+async function reabrir(){
+  const pin = document.getElementById('pin').value; const motivo = document.getElementById('motivo').value;
+  const j = await api.fetch(`/api/admin/sesiones/${window.__reabrir}/reabrir`,{ method:'POST', body: JSON.stringify({ pin, motivo }) });
+  if(!j.ok){ alert(j.error||'No se pudo reabrir'); return; }
+  cerrar('modalReabrir'); cargarMesas();
+}
+
+function money(n){ return Number(n).toFixed(2)+' Bs'; }
+async function cargarAlertas(){ const j=await api.fetch('/api/inventario/alertas'); const box=document.getElementById('alertas'); if((j.data||[]).length){ box.classList.remove('hidden'); box.textContent='Stock bajo: '+j.data.map(a=>`${a.nombre}(${a.stock})`).join(', ');} else { box.classList.add('hidden'); box.textContent=''; } }
+async function cargarProductosVista(){ await cargarProductos(false); }
+async function cargarReportes(){ const j=await api.fetch('/api/admin/reportes/ventas'); const tb=document.getElementById('rep'); tb.innerHTML=''; (j.data||[]).forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${new Date(r.ts).toLocaleString()}</td><td>${r.mesa_id}</td><td>${r.usuario}</td><td>${r.metodo_pago}</td><td>${money(r.total)}</td>`; tb.appendChild(tr); }); }
+</script>
+</body>
+</html>
