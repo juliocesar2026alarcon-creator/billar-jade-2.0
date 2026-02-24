@@ -1,4 +1,3 @@
-
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
@@ -21,13 +20,17 @@ app.use('/api', coreRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Salud
-app.get('/api/health', async (req,res)=>{
-  try { const r = await pool.query('select now()'); res.json({ ok:true, now: r.rows[0].now }); }
-  catch(e){ res.status(500).json({ ok:false, error:e.message }); }
+app.get('/api/health', async (req, res) => {
+  try {
+    const r = await pool.query('select now()');
+    res.json({ ok: true, now: r.rows[0].now });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // Frontend estático
 app.use('/', express.static(path.join(__dirname, 'frontend')));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, ()=> console.log('Billar Jade 2.0 escuchando en puerto', PORT));
+app.listen(PORT, () => console.log('Billar Jade 2.0 escuchando en puerto', PORT));
