@@ -3,12 +3,12 @@
   "version": "2.0.0",
   "description": "Billar Jade (backend+frontend) para Render con Postgres, roles, descuentos, reapertura y ticket 80mm",
   "main": "server.js",
-"scripts": {
-  "start": "node scripts/clean-start.js",
-  "dev": "node server.js",
-  "db:setup": "node scripts/init-db.js",
-  "postinstall": "node -e \"const fs=require('fs');try{const s=fs.readFileSync('server.js','utf8').replace(/^\\uFEFF/,'');fs.writeFileSync('server.clean.js',s);}catch(e){process.exit(0);}\""
-}
+  "scripts": {
+    "start": "node scripts/clean-start.js",
+    "dev": "node server.js",
+    "db:setup": "node scripts/init-db.js",
+    "postinstall": "node -e \"const fs=require('fs');try{const s=fs.readFileSync('server.js','utf8').replace(/^\\uFEFF/,'');fs.writeFileSync('server.clean.js',s);}catch(e){process.exit(0);}\""
+  },
   "engines": {
     "node": ">=18"
   },
