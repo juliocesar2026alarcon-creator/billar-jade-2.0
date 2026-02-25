@@ -51,7 +51,56 @@ app.get('/api/health', async (req, res) => {
 app.use('/api/auth',  authRoutes);
 app.use('/api',       coreRoutes);
 app.use('/api/admin', adminRoutes);
+// ===== Mantenimiento temporal: limpiar mesas duplicadas =====
+// ATENCIÓN: Úsalo una vez y luego elimínalo de server.js.
+const { Pool } = require('pg');
+const tmpPool = new Pool({ connectionString: process.env.DATABASE_URL });
 
+app.get('/__maintenance__/cleanup', async (req, res) => {
+  try {
+    // Pequeña "llave": exige pin=9999
+    if (String(req.query.pin || '') !== '9999') {
+      return res.status(403).send('Forbidden');
+    }
+
+    // Diagnóstico inicial
+    const dupCheck = await tmpPool.query(`
+      SELECT sucursal_id, codigo, COUNT(*) AS cant
+      FROM mesas
+      GROUP BY sucursal_id, codigo
+      HAVING COUNT(*) > 1
+      ORDER BY sucursal_id, codigo
+    `);
+
+    // Limpieza: deja 1 por (sucursal_id,codigo), conservando el menor id
+    const del = await tmpPool.query(`
+      DELETE FROM mesas m
+      USING mesas d
+      WHERE m.id > d.id
+        AND m.sucursal_id = d.sucursal_id
+        AND m.codigo = d.codigo
+    `);
+
+    // Conteo final
+    const after = await tmpPool.query(`
+      SELECT sucursal_id, codigo
+      FROM mesas
+      ORDER BY sucursal_id, codigo
+    `);
+
+    res.json({
+      ok: true,
+      duplicados_detectados: dupCheck.rowCount,
+      filas_borradas: del.rowCount,
+      total_mesas: after.rowCount,
+      ejemplo_primeras: after.rows.slice(0, 25)
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok:false, error: e.message });
+  }
+});
+// ============================================================
 // Frontend estático
 app.use('/', express.static(path.join(__dirname, 'frontend')));
 
