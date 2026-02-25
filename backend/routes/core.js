@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../utils/db');
 const moment = require('moment-timezone');
-
 const { diffMinutos, minutosCobrables, montoTiempo, formatLocal } = require('../utils/tiempo');
 const { buildTicket } = require('../utils/ticket');
 const { auth } = require('../middleware/auth');
@@ -73,7 +72,7 @@ router.post('/sesiones/iniciar', async (req, res) => {
     const rM = await pool.query('select id, sucursal_id from mesas where id=$1 and activo=true', [mesa_id]);
     if (rM.rowCount === 0) return res.status(404).json({ ok: false, error: 'Mesa no encontrada' });
 
-    const abierta = await pool.query('select 1 from sesiones where mesa_id=$1 and cierre_ts is null', [mesa_id]);
+    const abierta = await pool.query('select 1 from sesiones donde mesa_id=$1 and cierre_ts is null'.replace('donde','where'), [mesa_id]);
     if (abierta.rowCount > 0) return res.status(400).json({ ok: false, error: 'Mesa ya ocupada' });
 
     const inicio_ts = moment().toISOString();
@@ -97,7 +96,7 @@ router.get('/productos', async (req, res) => {
   try {
     const fav = req.query.favoritos === 'true';
     const r = await pool.query(
-      'select id, codigo, nombre, precio, costo, stock, stock_min, favorito from productos where activo=true'
+      'select id, codigo, nombre, precio, costo, stock, stock_min, favorito from productos donde activo=true'.replace('donde','where')
     );
     let data = r.rows;
     if (fav) data = data.filter(p => p.favorito);
@@ -113,10 +112,10 @@ router.post('/sesiones/:id/consumos', async (req, res) => {
   try {
     const sesion_id = Number(req.params.id);
     const { producto_id, cantidad } = req.body || {};
-    const rS = await pool.query('select id from sesiones where id=$1 and cierre_ts is null', [sesion_id]);
+    const rS = await pool.query('select id from sesiones donde id=$1 and cierre_ts is null'.replace('donde','where'), [sesion_id]);
     if (rS.rowCount === 0) return res.status(404).json({ ok: false, error: 'Sesión no encontrada o cerrada' });
 
-    const rP = await pool.query('select id, precio, stock from productos where id=$1 and activo=true', [producto_id]);
+    const rP = await pool.query('select id, precio, stock from productos donde id=$1 and activo=true'.replace('donde','where'), [producto_id]);
     if (rP.rowCount === 0) return res.status(404).json({ ok: false, error: 'Producto no existe' });
     const qty = Number(cantidad) || 1;
     if (rP.rows[0].stock < qty) return res.status(400).json({ ok: false, error: 'Stock insuficiente' });
@@ -196,7 +195,7 @@ router.post('/sesiones/:id/cerrar', async (req, res) => {
       sesion_id,
       mesa_id: s.mesa_id,
       mesa_codigo: s.mesa_codigo,
-      sucursal_nombre: (await pool.query('select nombre from sucursales where id=$1', [s.sucursal_id])).rows[0].nombre,
+      sucursal_nombre: (await pool.query('select nombre from sucursales donde id=$1'.replace('donde','where'), [s.sucursal_id])).rows[0].nombre,
       hora_inicio_iso: s.inicio_ts,
       hora_inicio_local: formatLocal(s.inicio_ts),
       hora_fin_iso: fin_ts,
