@@ -7,7 +7,6 @@ const moment = require('moment-timezone');
 
 router.use(auth, requireRole('ADMIN'));
 
-// Reapertura con PIN supervisor (admin actual)
 router.post('/sesiones/:id/reabrir', async (req, res) => {
   try {
     const sesion_id = Number(req.params.id);
@@ -24,14 +23,8 @@ router.post('/sesiones/:id/reabrir', async (req, res) => {
     if (rS.rowCount === 0) return res.status(404).json({ ok: false, error: 'Sesión no existe' });
     if (!rS.rows[0].cierre_ts) return res.status(400).json({ ok: false, error: 'La sesión ya está abierta' });
 
-    await pool.query(
-      'update sesiones set cierre_ts=null, minutos_reales=null, minutos_cobrables=null, monto_tiempo_bs=null where id=$1',
-      [sesion_id]
-    );
-    await pool.query(
-      'insert into auditoria(usuario_id, tipo, detalle, ts) values($1,$2,$3,$4)',
-      [req.user.id, 'REAPERTURA', { sesion_id, motivo }, new Date().toISOString()]
-    );
+    await pool.query('update sesiones set cierre_ts=null, minutos_reales=null, minutos_cobrables=null, monto_tiempo_bs=null where id=$1', [sesion_id]);
+    await pool.query('insert into auditoria(usuario_id, tipo, detalle, ts) values($1,$2,$3,$4)', [req.user.id, 'REAPERTURA', { sesion_id, motivo }, new Date().toISOString()]);
 
     res.json({ ok: true, message: 'Sesión reabierta' });
   } catch (e) {
@@ -40,20 +33,15 @@ router.post('/sesiones/:id/reabrir', async (req, res) => {
   }
 });
 
-// Movimientos de inventario (entrada/merma)
 router.post('/inventario/movimientos', async (req, res) => {
   try {
     const { producto_id, tipo, cantidad } = req.body || {};
     const qty = Number(cantidad) || 0;
-    const q =
-      tipo === 'ENTRADA'
-        ? 'update productos set stock = stock + $1 where id=$2'
-        : 'update productos set stock = stock - $1 where id=$2';
+    const q = tipo === 'ENTRADA'
+      ? 'update productos set stock = stock + $1 donde id=$2'.replace('donde','where')
+      : 'update productos set stock = stock - $1 donde id=$2'.replace('donde','where');
     await pool.query(q, [qty, Number(producto_id)]);
-    await pool.query(
-      'insert into auditoria(usuario_id, tipo, detalle, ts) values($1,$2,$3,$4)',
-      [req.user.id, `INVENTARIO_${tipo}`, { producto_id, cantidad: qty }, new Date().toISOString()]
-    );
+    await pool.query('insert into auditoria(usuario_id, tipo, detalle, ts) values($1,$2,$3,$4)', [req.user.id, `INVENTARIO_${tipo}`, { producto_id, cantidad: qty }, new Date().toISOString()]);
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
@@ -61,7 +49,6 @@ router.post('/inventario/movimientos', async (req, res) => {
   }
 });
 
-// Reporte simple de ventas
 router.get('/reportes/ventas', async (req, res) => {
   try {
     const { desde, hasta, sucursal_id } = req.query;
