@@ -51,37 +51,73 @@ app.get('/api/health', async (req, res) => {
 app.use('/api/auth',  authRoutes);
 app.use('/api',       coreRoutes);
 app.use('/api/admin', adminRoutes);
-// ===== Mantenimiento temporal: limpiar mesas duplicadas =====
-// ATENCIÓN: Úsalo una vez y luego elimínalo de server.js.
+// ===== Mantenimiento temporal V2: limpiar mesas duplicadas con FK =====
+// ATENCIÓN: Ejecutar una vez y luego ELIMINAR.
 const { Pool } = require('pg');
 const tmpPool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 app.get('/__maintenance__/cleanup', async (req, res) => {
+  const client = await tmpPool.connect();
   try {
-    // Pequeña "llave": exige pin=9999
     if (String(req.query.pin || '') !== '9999') {
       return res.status(403).send('Forbidden');
     }
 
-    // Diagnóstico inicial
-    const dupCheck = await tmpPool.query(`
-      SELECT sucursal_id, codigo, COUNT(*) AS cant
-      FROM mesas
-      GROUP BY sucursal_id, codigo
-      HAVING COUNT(*) > 1
-      ORDER BY sucursal_id, codigo
+    await client.query('BEGIN');
+
+    // 1) Detectar duplicados por (sucursal_id, codigo) y elegir el id "keeper" (el menor)
+    const dup = await client.query(`
+      WITH grouped AS (
+        SELECT sucursal_id, codigo, MIN(id) AS keeper
+        FROM mesas
+        GROUP BY sucursal_id, codigo
+      )
+      SELECT m.id AS duplicate_id, g.keeper AS keeper_id,
+             m.sucursal_id, m.codigo
+      FROM mesas m
+      JOIN grouped g
+        ON g.sucursal_id = m.sucursal_id
+       AND g.codigo      = m.codigo
+      WHERE m.id <> g.keeper
+      ORDER BY m.sucursal_id, m.codigo, m.id
     `);
 
-    // Limpieza: deja 1 por (sucursal_id,codigo), conservando el menor id
-    const del = await tmpPool.query(`
+    const map = dup.rows; // cada row: {duplicate_id, keeper_id, sucursal_id, codigo}
+
+    // 2) Reasignar sesiones de las mesas duplicadas hacia la mesa "keeper"
+    let updatedSes = 0;
+    for (const r of map) {
+      const upd = await client.query(
+        `UPDATE sesiones
+            SET mesa_id = $1
+          WHERE mesa_id = $2`,
+        [r.keeper_id, r.duplicate_id]
+      );
+      updatedSes += upd.rowCount;
+    }
+
+    // 3) Borrar las mesas duplicadas (ya sin referencias)
+    const del = await client.query(`
       DELETE FROM mesas m
-      USING mesas d
-      WHERE m.id > d.id
-        AND m.sucursal_id = d.sucursal_id
-        AND m.codigo = d.codigo
+      USING (
+        WITH grouped AS (
+          SELECT sucursal_id, codigo, MIN(id) AS keeper
+          FROM mesas
+          GROUP BY sucursal_id, codigo
+        )
+        SELECT m.id
+        FROM mesas m
+        JOIN grouped g
+          ON g.sucursal_id = m.sucursal_id
+         AND g.codigo      = m.codigo
+        WHERE m.id <> g.keeper
+      ) d
+      WHERE m.id = d.id
     `);
 
-    // Conteo final
+    await client.query('COMMIT');
+
+    // 4) Conteo final
     const after = await tmpPool.query(`
       SELECT sucursal_id, codigo
       FROM mesas
@@ -90,14 +126,18 @@ app.get('/__maintenance__/cleanup', async (req, res) => {
 
     res.json({
       ok: true,
-      duplicados_detectados: dupCheck.rowCount,
-      filas_borradas: del.rowCount,
+      duplicados_detectados: map.length,
+      sesiones_reasignadas: updatedSes,
+      mesas_borradas: del.rowCount,
       total_mesas: after.rowCount,
-      ejemplo_primeras: after.rows.slice(0, 25)
+      ejemplo_primeras: after.rows.slice(0, 30)
     });
   } catch (e) {
+    await client.query('ROLLBACK');
     console.error(e);
-    res.status(500).json({ ok:false, error: e.message });
+    res.status(500).json({ ok: false, error: e.message });
+  } finally {
+    client.release();
   }
 });
 // ============================================================
