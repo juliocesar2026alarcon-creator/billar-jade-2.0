@@ -3,12 +3,29 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const moment = require('moment-timezone');
-const { pool } = require('./backend/utils/db');
+// --- Detector de módulo problemático ---
+function req(name, path) {
+  try {
+    console.log('▶ Requiriendo:', name, path);
+    return require(path);
+  } catch (e) {
+    console.error('❌ Falla al requerir:', name, path);
+    console.error(e.stack || e);
+    // Salimos con error para que Render muestre el stack completo
+    process.exit(1);
+  }
+}
 
-// const authRoutes = require('./backend/routes/auth');
-// const coreRoutes = require('./backend/routes/core');
-// const adminRoutes = require('./backend/routes/admin');
+// Utils y middleware (con detección)
+const { pool } = req('utils/db', './backend/utils/db');
+req('utils/tiempo', './backend/utils/tiempo');
+req('utils/ticket', './backend/utils/ticket');
+const { auth, requireRole } = req('middleware/auth', './backend/middleware/auth');
 
+// Rutas (con detección)
+const authRoutes = req('routes/auth', './backend/routes/auth');
+const coreRoutes = req('routes/core', './backend/routes/core');
+const adminRoutes = req('routes/admin', './backend/routes/admin');
 
 moment.tz.setDefault(process.env.TZ || 'America/La_Paz');
 
