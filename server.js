@@ -51,45 +51,47 @@ app.get('/api/health', async (req, res) => {
 app.use('/api/auth',  authRoutes);
 app.use('/api',       coreRoutes);
 app.use('/api/admin', adminRoutes);
-// ===== Seed temporal de insumos (BORRAR LUEGO) =====
-const { Pool } = require('pg');
-const seedPool2 = new Pool({ connectionString: process.env.DATABASE_URL });
-
-app.get('/__maintenance__/seed_insumos_v2', async (req, res) => {
+// ===== Seed FINAL de productos (BORRAR luego) =====
+app.get('/__seed__/productos_final', async (req, res) => {
   try {
-    if (String(req.query.pin || '') !== '9999') return res.status(403).send('Forbidden');
+    // pequeña llave
+    if ((req.query.pin || '') !== '9999')
+      return res.status(403).json({ ok:false, error:'PIN incorrecto' });
 
     const items = [
-      { codigo:'CDL1', nombre:'Cerveza Dorada Litro', precio:12.00, costo:8.00, stock:20, stock_min:5, favorito:false },
-      { codigo:'CP620', nombre:'Cerveza Paceña 620', precio:11.00, costo:7.00, stock:24, stock_min:6, favorito:false },
-      { codigo:'CR710', nombre:'Corona 710 ml', precio:16.00, costo:11.00, stock:12, stock_min:4, favorito:true },
-      { codigo:'CC600', nombre:'Coca-Cola 600 ml', precio:6.00, costo:4.00, stock:30, stock_min:10, favorito:true },
-      { codigo:'PS600', nombre:'Pepsi 600 ml', precio:6.00, costo:4.00, stock:30, stock_min:10, favorito:false },
-      { codigo:'NECTMAN', nombre:'CC Néctar Mango', precio:5.00, costo:3.00, stock:20, stock_min:5, favorito:false },
-      { codigo:'NECTDUR', nombre:'CC Néctar Durazno', precio:5.00, costo:3.00, stock:20, stock_min:5, favorito:false },
-      { codigo:'CUSQ330', nombre:'Cusqueña 330 ml', precio:12.00, costo:8.00, stock:12, stock_min:3, favorito:false },
-      { codigo:'SV1', nombre:'Siete Vidas', precio:10.00, costo:6.00, stock:18, stock_min:4, favorito:false },
-      { codigo:'SPO', nombre:'Sabor Popular', precio:6.00, costo:4.00, stock:30, stock_min:10, favorito:false }
+      ['TIZA',    'Tiza Blanca',       2.00, 1.00, 30, 10, true],
+      ['AGUA500', 'Agua 500ml',        5.00, 3.00, 24,  6, true],
+      ['GAS350',  'Gaseosa 350ml',     7.00, 4.00, 24,  6, true],
+      ['SNACK1',  'Snack',             6.00, 3.50, 20,  5, false],
+      ['CERVL1',  'Cerveza Litro',    12.00, 8.00, 20,  5, false],
+      ['PACE620', 'Paceña 620ml',     11.00, 7.00, 24,  6, false],
+      ['COR710',  'Corona 710ml',     16.00,11.00, 12,  4, true],
+      ['COCA600', 'Coca-Cola 600',     6.00, 4.00, 30, 10, true],
+      ['PEPS600', 'Pepsi 600',         6.00, 4.00, 30, 10, false],
+      ['NECMAN',  'Néctar Mango',      5.00, 3.00, 20,  5, false]
     ];
 
     let insertados = 0;
+
     for (const p of items) {
-      const r = await seedPool2.query(
-        `INSERT INTO productos (codigo, nombre, precio, costo, stock, stock_min, favorito, activo)
+      const r = await pool.query(
+        `INSERT INTO productos (codigo,nombre,precio,costo,stock,stock_min,favorito,activo)
          SELECT $1,$2,$3,$4,$5,$6,$7,true
          WHERE NOT EXISTS (SELECT 1 FROM productos WHERE codigo=$1)`,
-        [p.codigo, p.nombre, p.precio, p.costo, p.stock, p.stock_min, p.favorito]
+        p
       );
       insertados += r.rowCount;
     }
 
-    const tot = await seedPool2.query(`SELECT COUNT(*)::int AS c FROM productos`);
-    res.json({ ok:true, insertados, total_productos: tot.rows[0].c });
-  } catch (e) {
-    res.status(500).json({ ok:false, error: e.message });
+    const total = await pool.query(`SELECT COUNT(*)::int AS c FROM productos`);
+    return res.json({ ok:true, insertados, total: total.rows[0].c });
+
+  } catch(e){
+    console.error(e);
+    return res.status(500).json({ ok:false, error:e.message });
   }
 });
-// =====================================================
+// ===== FIN SEED =====
 // Frontend estático
 app.use('/', express.static(path.join(__dirname, 'frontend')));
 
