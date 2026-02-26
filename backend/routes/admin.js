@@ -74,5 +74,86 @@ router.get('/reportes/ventas', async (req, res) => {
     res.status(500).json({ ok: false, error: 'No se pudieron obtener ventas' });
   }
 });
+// ====== ADMIN: CRUD de Productos ======
+// Listar (incluye costo)
+router.get('/productos', async (req, res) => {
+  try {
+    const r = await pool.query(`
+      select id, codigo, nombre, precio, costo, stock, stock_min, favorito, activo
+      from productos
+      order by nombre
+    `);
+    res.json({ ok: true, data: r.rows });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok:false, error:'No se pudieron listar productos' });
+  }
+});
 
+// Crear
+router.post('/productos', async (req, res) => {
+  try {
+    const { codigo, nombre, precio, costo, stock, stock_min, favorito } = req.body || {};
+    if (!codigo || !nombre) return res.status(400).json({ ok:false, error:'Código y nombre son requeridos' });
+    const r = await pool.query(`
+      insert into productos (codigo, nombre, precio, costo, stock, stock_min, favorito, activo)
+      values ($1,$2,$3,$4,$5,$6,$7,true)
+      returning id
+    `, [codigo, nombre, Number(precio||0), Number(costo||0), Number(stock||0), Number(stock_min||0), favorito===true]);
+    res.json({ ok:true, id: r.rows[0].id });
+  } catch (e) {
+    console.error(e);
+    if (e.code === '23505') return res.status(400).json({ ok:false, error:'Código ya existe' });
+    res.status(500).json({ ok:false, error:'No se pudo crear producto' });
+  }
+});
+
+// Editar
+router.put('/productos/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { codigo, nombre, precio, costo, stock, stock_min, favorito, activo } = req.body || {};
+    const r = await pool.query(`
+      update productos set
+        codigo = coalesce($2, codigo),
+        nombre = coalesce($3, nombre),
+        precio = coalesce($4, precio),
+        costo = coalesce($5, costo),
+        stock = coalesce($6, stock),
+        stock_min = coalesce($7, stock_min),
+        favorito = coalesce($8, favorito),
+        activo = coalesce($9, activo)
+      where id=$1
+    `, [id,
+      codigo ?? null, nombre ?? null,
+      (precio!==undefined? Number(precio): null),
+      (costo!==undefined? Number(costo): null),
+      (stock!==undefined? Number(stock): null),
+      (stock_min!==undefined? Number(stock_min): null),
+      (favorito!==undefined? favorito: null),
+      (activo!==undefined? activo: null)
+    ]);
+    res.json({ ok:true });
+  } catch (e) {
+    console.error(e);
+    if (e.code === '23505') return res.status(400).json({ ok:false, error:'Código duplicado' });
+    res.status(500).json({ ok:false, error:'No se pudo editar producto' });
+  }
+});
+
+// Eliminar
+router.delete('/productos/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    // Si prefieres "baja lógica": update productos set activo=false where id=$1
+    await pool.query(`delete from productos where id=$1`, [id]);
+    res.json({ ok:true });
+  } catch (e) {
+    console.error(e);
+    // Si hay FK (consumos), puedes decidir baja lógica:
+    // if (e.code==='23503') { await pool.query(`update productos set activo=false where id=$1`, [id]); return res.json({ok:true}); }
+    res.status(500).json({ ok:false, error:'No se pudo eliminar (tiene movimientos relacionados?)' });
+  }
+});
+// ====== FIN CRUD ======
 module.exports = router;
