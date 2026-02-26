@@ -60,18 +60,36 @@ th,td{ padding:6px; border-bottom:1px solid #24304d; text-align:left; }
     <div class="grid" id="grid"></div>
   </section>
 
-  <!-- INVENTARIO -->
-  <section id="vista-inventario" class="hidden" style="padding:16px">
-    <h3>Inventario</h3>
-    <div class="row">
-      <button onclick="cargarProductos(false)">Todos</button>
-      <button onclick="cargarProductos(true)">Favoritos</button>
+ <!-- INVENTARIO -->
+<section id="vista-inventario" class="hidden" style="padding:16px">
+  <div><h3>Inventario</h3></div>
+
+  <!-- Controles -->
+  <div style="margin-bottom:10px; display:flex; gap:8px;">
+    <button class="btn" onclick="invMostrarTodos()">Todos</button>
+    <button class="btn" onclick="invMostrarFavoritos()">Favoritos</button>
+
+    <!-- Botones solo ADMIN -->
+    <div id="invAdminBtns" class="hidden" style="display:flex; gap:8px; margin-left:auto;">
+      <button class="btn" onclick="invMovimiento('ENTRADA')">+ Entrada</button>
+      <button class="btn" onclick="invMovimiento('MERMA')">– Merma</button>
     </div>
-    <table>
-      <thead><tr><th>Código</th><th>Producto</th><th>Precio</th><th>Stock</th><th>Stock mín</th><th></th></tr></thead>
-      <tbody id="inv"></tbody>
-    </table>
-  </section>
+  </div>
+
+  <!-- Tabla -->
+  <table id="tablaInventario" class="tabla">
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Producto</th>
+        <th>Precio</th>
+        <th>Stock</th>
+        <th>Stock mín</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</section>
 
   <!-- REPORTES -->
   <section id="vista-reportes" class="hidden" style="padding:16px">
@@ -147,7 +165,76 @@ const api = {
     return r.json();
   }
 };
+// --- Inventario (listar + pintar + botones) ---
 
+let __invFiltro = 'TODOS'; // 'TODOS' | 'FAV'
+
+async function cargarInventario() {
+  try {
+    const url = (__invFiltro === 'FAV')
+      ? '/api/productos?favoritos=true'
+      : '/api/productos';
+
+    const j = await api.fetch(url);
+
+    if (!j || !j.ok || !Array.isArray(j.data)) {
+      console.warn('Inventario: respuesta vacía o error', j);
+      renderInventario([]);
+      return;
+    }
+    renderInventario(j.data);
+  } catch (e) {
+    console.error('Error cargarInventario', e);
+    renderInventario([]);
+  }
+}
+
+function renderInventario(lista) {
+  const tbody = document.querySelector('#tablaInventario tbody');
+  if (!tbody) { console.error('No existe #tablaInventario tbody'); return; }
+
+  tbody.innerHTML = '';
+  if (!lista.length) return;
+
+  for (const p of lista) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${p.codigo ?? ''}</td>
+      <td>${p.nombre ?? ''}</td>
+      <td>${Number(p.precio ?? 0).toFixed(2)}</td>
+      <td>${Number(p.stock ?? 0)}</td>
+      <td>${Number(p.stock_min ?? 0)}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+function invMostrarTodos() {
+  __invFiltro = 'TODOS';
+  cargarInventario();
+}
+function invMostrarFavoritos() {
+  __invFiltro = 'FAV';
+  cargarInventario();
+}
+
+// --- Movimientos rápidos (solo ADMIN). Luego lo cambiamos por modal/selector.
+async function invMovimiento(tipo){
+  try {
+    const idStr = prompt(`Movimiento de ${tipo}\nID de producto:`); if (!idStr) return;
+    const cantidadStr = prompt('Cantidad:'); if (!cantidadStr) return;
+    const producto_id = Number(idStr), cantidad = Number(cantidadStr);
+
+    const j = await api.fetch('/api/admin/inventario/movimientos', {
+      method: 'POST',
+      body: JSON.stringify({ producto_id, tipo, cantidad })
+    });
+    if (!j || !j.ok) { alert(j?.error || 'No se pudo registrar el movimiento'); return; }
+
+    alert('Movimiento registrado');
+    cargarInventario();
+  } catch(e){ console.error(e); alert('Error registrando movimiento'); }
+}
 let estado = { user:null, sucursalId:null, mesas:[], sesionCierre:null, mesaCierre:null };
 
 function ver(v){
@@ -172,6 +259,18 @@ async function login(){
   document.getElementById('login').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('rolBadge').textContent = j.user.rol;
+  // Mostrar botones de inventario solo si eres ADMIN
+const isAdmin = (estado.user && estado.user.rol === 'ADMIN');
+const invBtns = document.getElementById('invAdminBtns');
+if (invBtns) invBtns.classList.toggle('hidden', !isAdmin);
+
+// Cargas iniciales ya con token
+await cargarSucursales();
+await cargarInventario();
+
+// Timer de mesas
+if (__mesasTimer) clearInterval(__mesasTimer);
+__mesasTimer = setInterval(cargarMesas, 5000);
   await cargarSucursales();
 }
 function logout(){ localStorage.removeItem('token'); location.reload(); }
