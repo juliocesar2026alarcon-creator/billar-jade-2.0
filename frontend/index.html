@@ -446,9 +446,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // OJO: NO repitas aquí el listener de Enter si ya lo tenés más arriba.
-  // (En tu archivo ya existe el bloque que agrega keyup Enter a #u y #p)
-});
+ 
 function logout(){ localStorage.removeItem('token'); location.reload(); }
 
 async function cargarSucursales(){
