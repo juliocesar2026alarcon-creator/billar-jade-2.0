@@ -31,7 +31,7 @@ th,td{ padding:6px; border-bottom:1px solid #24304d; text-align:left; }
   <h2>Iniciar sesión</h2>
   <label>Usuario<br><input id="u" autocomplete="username"></label><br><br>
   <label>Contraseña<br><input id="p" type="password" autocomplete="current-password"></label><br><br>
-  <button id="btnLogin" type="button" class="primary" onclick="login()">Entrar</button>
+ <button id="btnLogin" type="button" class="primary" onclick="login()">Entrar</button>
   <p style="color:var(--muted); font-size:12px">Admin: admin/123456 · Cajero: cajero/1234</p>
 </div>
 
@@ -165,6 +165,7 @@ const api = {
     return r.json();
   }
 };
+let __mesaTimer = null; 
 // --- Inventario (listar + pintar + botones) ---
 
 let __invFiltro = 'TODOS'; // 'TODOS' | 'FAV'
@@ -272,19 +273,22 @@ await cargarSucursales();
 await cargarInventario();
 
 // Timer de mesas
-if (__mesasTimer) clearInterval(__mesasTimer);
-__mesasTimer = setInterval(cargarMesas, 5000);
-  await cargarSucursales();
-}
+if (__mesaTimer) clearInterval(__mesaTimer);
+__mesaTimer = setInterval(cargarMesas, 5000);
+} // ← CIERRE de async function login()
+
+// Hacer visible login() para onclick="login()"
+window.login = login;
+
 // --- Enlazar botón y tecla Enter al login (backup confiable) ---
 window.addEventListener('DOMContentLoaded', () => {
-  // Click al botón
+  // Click del botón
   document.getElementById('btnLogin')?.addEventListener('click', (e) => {
     e.preventDefault();
     login();
   });
 
-  // Enter en cualquiera de los dos inputs
+  // Enter en usuario/contraseña
   const u = document.getElementById('u');
   const p = document.getElementById('p');
   [u, p].forEach(inp => {
