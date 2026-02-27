@@ -381,34 +381,60 @@ function ver(v){
 function tickClock(){ const d=new Date(); const h=String(d.getHours()).padStart(2,'0'); const m=String(d.getMinutes()).padStart(2,'0'); const s=String(d.getSeconds()).padStart(2,'0'); document.getElementById('clock').textContent=`${h}:${m}:${s}`; }
 setInterval(tickClock,1000); tickClock();
 
+// === LOGIN + LISTENERS (REEMPLAZO COMPLETO) ===
 async function login(){
-  const usuario=document.getElementById('u').value.trim();
-  const password=document.getElementById('p').value;
-  const j = await api.fetch('/api/auth/login',{ method:'POST', body: JSON.stringify({usuario,password}) });
-  if(!j.ok){ alert(j.error||'No se pudo iniciar sesión'); return; }
-  localStorage.setItem('token', j.token);
-  estado.user = j.user;
-  document.getElementById('login').classList.add('hidden');
-  document.getElementById('app').classList.remove('hidden');
-  document.getElementById('rolBadge').textContent = j.user.rol;
-  // Mostrar botones de inventario solo si eres ADMIN
-const isAdmin = (estado.user && estado.user.rol === 'ADMIN');
-const invBtns = document.getElementById('invAdminBtns');
-if (invBtns) invBtns.classList.toggle('hidden', !isAdmin);
+  try {
+    const usuario  = document.getElementById('u')?.value?.trim() ?? '';
+    const password = document.getElementById('p')?.value ?? '';
 
-// Cargas iniciales ya con token
-await cargarSucursales();
-await cargarInventario();
+    const j = await api.fetch('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ usuario, password })
+    });
 
-// Timer de mesas
-if (__mesaTimer) clearInterval(__mesaTimer);
-__mesaTimer = setInterval(cargarMesas, 5000);
-} // ← CIERRE de async function login()
+    if (!j || !j.ok) {
+      alert(j?.error || 'No se pudo iniciar sesión');
+      return;
+    }
+
+    // guardar sesión
+    localStorage.setItem('token', j.token);
+    estado.user = j.user;
+
+    // mostrar app / ocultar login
+    document.getElementById('login')?.classList?.add('hidden');
+    document.getElementById('app')?.classList?.remove('hidden');
+
+    // mostrar rol
+    const rolEl = document.getElementById('rol') || document.getElementById('rolBadge');
+    if (rolEl) rolEl.textContent = j.user.rol;
+
+    // botones solo ADMIN
+    const isAdmin = (j.user?.rol === 'ADMIN');
+    document.getElementById('invAdminBtns')?.classList?.toggle('hidden', !isAdmin);
+    document.getElementById('btnConfig')?.classList?.toggle('hidden', !isAdmin);
+
+    // cargas iniciales (ya con token)
+    await cargarSucursales?.();
+    await cargarInventario?.();
+
+    // timer de mesas (solo cuando estés en Caja)
+    if (typeof __mesaTimer === 'undefined') { window.__mesaTimer = null; }
+    if (__mesaTimer) clearInterval(__mesaTimer);
+    __mesaTimer = setInterval(() => {
+      try { cargarMesas?.(); } catch(e){ console.warn(e); }
+    }, 5000);
+
+  } catch(e){
+    console.error(e);
+    alert('Error de login');
+  }
+} // <-- CIERRE de async function login()
 
 // Hacer visible login() para onclick="login()"
 window.login = login;
 
-// Click del botón y tecla Enter (1 solo DOMContentLoaded)
+// Click del botón y tecla Enter (un solo DOMContentLoaded)
 window.addEventListener('DOMContentLoaded', () => {
   // Click del botón "Entrar"
   const btn = document.getElementById('btnLogin');
@@ -432,20 +458,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   });
 });
-// Hacer visible login() para onclick="login()"
-window.login = login;
-
-// Agregar el click del botón DENTRO DEL MISMO DOMContentLoaded que ya tenés arriba
-window.addEventListener('DOMContentLoaded', () => {
-  // Click del botón "Entrar"
-  const btn = document.getElementById('btnLogin');
-  if (btn) {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      login();
-    });
-  }
-
+// === FIN LOGIN + LISTENERS ===
  
 function logout(){ localStorage.removeItem('token'); location.reload(); }
 
