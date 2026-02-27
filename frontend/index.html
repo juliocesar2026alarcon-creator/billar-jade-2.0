@@ -224,19 +224,47 @@ function invMostrarFavoritos() {
 // --- Movimientos rápidos (solo ADMIN). Luego lo cambiamos por modal/selector.
 async function invMovimiento(tipo){
   try {
-    const idStr = prompt(`Movimiento de ${tipo}\nID de producto:`); if (!idStr) return;
-    const cantidadStr = prompt('Cantidad:'); if (!cantidadStr) return;
-    const producto_id = Number(idStr), cantidad = Number(cantidadStr);
+    // 1) Leer producto (ID o CÓDIGO)
+    const ref = (prompt(`Movimiento de ${tipo}\nID o CÓDIGO del producto:`) || '').trim();
+    if (!ref) return;
 
-    const j = await api.fetch('/api/admin/inventario/movimientos', {
+    // 2) Leer cantidad
+    const cantStr = (prompt('Cantidad:') || '').trim();
+    if (!cantStr) return;
+    const cantidad = Number(cantStr);
+    if (!Number.isFinite(cantidad) || cantidad <= 0) {
+      alert('Cantidad inválida'); return;
+    }
+
+    // 3) Resolver ref → producto_id (acepta ID numérico o CÓDIGO)
+    let producto_id = Number(ref);
+    if (!Number.isInteger(producto_id)) {
+      // no es ID; buscamos por CÓDIGO en la lista admin
+      const j = await api.fetch('/api/admin/productos');
+      const lista = Array.isArray(j?.data) ? j.data : [];
+      const p = lista.find(x => String(x.codigo).toUpperCase() === ref.toUpperCase());
+      if (!p) { alert('No se encontró producto con ese código'); return; }
+      producto_id = p.id;
+    }
+
+    // 4) Enviar el movimiento (ADMIN)
+    const r = await api.fetch('/api/admin/inventario/movimientos', {
       method: 'POST',
-      body: JSON.stringify({ producto_id, tipo, cantidad })
+      body: JSON.stringify({ producto_id, tipo: String(tipo).toUpperCase(), cantidad })
     });
-    if (!j || !j.ok) { alert(j?.error || 'No se pudo registrar el movimiento'); return; }
 
+    if (!r || !r.ok) {
+      alert(r?.error || 'No se pudo registrar el movimiento');
+      return;
+    }
+
+    // 5) Refrescar inventario
+    await cargarInventario();
     alert('Movimiento registrado');
-    cargarInventario();
-  } catch(e){ console.error(e); alert('Error registrando movimiento'); }
+  } catch(e){
+    console.error(e);
+    alert('Error registrando movimiento');
+  }
 }
 let estado = { user:null, sucursalId:null, mesas:[], sesionCierre:null, mesaCierre:null };
 
