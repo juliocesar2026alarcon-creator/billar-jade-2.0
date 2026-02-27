@@ -173,15 +173,26 @@ let __mesaTimer = null;
 // --- Inventario (listar + pintar + botones) ---
 
 let __invFiltro = 'TODOS'; // 'TODOS' | 'FAV'
+  // cache para acciones por fila
+let __invData = [];
+
+// favorito robusto: acepta true/1/'1'/'t'/'true'
+function isFav(p){
+  const v = p?.favorito;
+  return v === true || v === 1 || v === '1' || v === 't' || v === 'true';
+}
 
 async function cargarInventario() {
   try {
-    // Trae productos con costo desde ADMIN
+    // Trae productos (con costo) desde ADMIN
     const j = await api.fetch('/api/admin/productos');
-    let data = Array.isArray(j?.data) ? j.data : [];
+    __invData = Array.isArray(j?.data) ? j.data : [];
 
-    // Mantener filtro Favoritos desde el front
-    if (__invFiltro === 'FAV') data = data.filter(x => x.favorito == true);
+    // mostrar solo activos
+    let data = __invData.filter(p => p.activo !== false);
+
+    // Filtro Favoritos desde el front
+    if (__invFiltro === 'FAV') data = data.filter(isFav);
 
     renderInventario(data);
   } catch (e) {
@@ -199,13 +210,24 @@ function renderInventario(lista) {
 
   for (const p of lista) {
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${p.codigo ?? ''}</td>
-      <td>${p.nombre ?? ''}</td>
-      <td>${Number(p.precio ?? 0).toFixed(2)}</td>
-      <td>${Number(p.stock ?? 0)}</td>
-      <td>${Number(p.stock_min ?? 0)}</td>
-    `;
+    const precio = Number(p.precio ?? 0);
+    const costo  = Number(p.costo ?? 0);
+    const margen = (precio > 0) ? (((precio - costo) / precio) * 100).toFixed(1) : '0.0';
+
+tr.innerHTML = `
+  <td>${p.id ?? ''}</td>
+  <td>${p.codigo ?? ''}</td>
+  <td>${p.nombre ?? ''}</td>
+  <td>${precio.toFixed(2)}</td>
+  <td>${costo.toFixed(2)}</td>
+  <td>${margen}</td>
+  <td>${Number(p.stock ?? 0)}</td>
+  <td>${Number(p.stock_min ?? 0)}</td>
+  <td>
+    #Editar</a> |
+    #${(p.favorito ? 'Quitar fav' : 'Marcar fav')}</a>
+  </td>
+`;
     tbody.appendChild(tr);
   }
 }
