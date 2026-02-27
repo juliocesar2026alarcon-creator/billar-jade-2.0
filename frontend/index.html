@@ -179,7 +179,6 @@ let data = Array.isArray(j.data) ? j.data : [];
 if (__invFiltro === 'FAV') data = data.filter(x => x.favorito);
 renderInventario(data);
 
-    const j = await api.fetch(url);
 
     if (!j || !j.ok || !Array.isArray(j.data)) {
       console.warn('Inventario: respuesta vacía o error', j);
