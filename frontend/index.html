@@ -408,19 +408,23 @@ __mesaTimer = setInterval(cargarMesas, 5000);
 // Hacer visible login() para onclick="login()"
 window.login = login;
 
-// --- Enlazar botón y tecla Enter al login (backup confiable) ---
+// Click del botón y tecla Enter (1 solo DOMContentLoaded)
 window.addEventListener('DOMContentLoaded', () => {
-  // Click del botón
-  document.getElementById('btnLogin')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    login();
-  });
+  // Click del botón "Entrar"
+  const btn = document.getElementById('btnLogin');
+  if (btn) {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      login();
+    });
+  }
 
-  // Enter en usuario/contraseña
+  // Enter en usuario y contraseña
   const u = document.getElementById('u');
   const p = document.getElementById('p');
   [u, p].forEach(inp => {
-    inp?.addEventListener('keyup', (ev) => {
+    if (!inp) return;
+    inp.addEventListener('keyup', (ev) => {
       if (ev.key === 'Enter') {
         ev.preventDefault();
         login();
