@@ -80,11 +80,15 @@ th,td{ padding:6px; border-bottom:1px solid #24304d; text-align:left; }
   <table id="tablaInventario" class="tabla">
     <thead>
       <tr>
-        <th>Código</th>
-        <th>Producto</th>
-        <th>Precio</th>
-        <th>Stock</th>
-        <th>Stock mín</th>
+       <th>ID</th>
+       <th>Código</th>
+       <th>Producto</th>
+       <th>Precio</th>
+       <th>Costo</th>
+       <th>Margen %</th>
+       <th>Stock</th>
+       <th>Stock mín</th>
+       <th>Acciones</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -172,22 +176,16 @@ let __invFiltro = 'TODOS'; // 'TODOS' | 'FAV'
 
 async function cargarInventario() {
   try {
-    // Traer productos con costo desde el endpoint de ADMIN
-const j = await api.fetch('/api/admin/productos');
-let data = Array.isArray(j.data) ? j.data : [];
-// Mantén el filtro Favoritos desde el front
-if (__invFiltro === 'FAV') data = data.filter(x => x.favorito);
-renderInventario(data);
+    // Trae productos con costo desde ADMIN
+    const j = await api.fetch('/api/admin/productos');
+    let data = Array.isArray(j?.data) ? j.data : [];
 
+    // Mantener filtro Favoritos desde el front
+    if (__invFiltro === 'FAV') data = data.filter(x => x.favorito == true);
 
-    if (!j || !j.ok || !Array.isArray(j.data)) {
-      console.warn('Inventario: respuesta vacía o error', j);
-      renderInventario([]);
-      return;
-    }
-    renderInventario(j.data);
+    renderInventario(data);
   } catch (e) {
-    console.error('Error cargarInventario', e);
+    console.error('error cargarInventario()', e);
     renderInventario([]);
   }
 }
