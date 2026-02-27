@@ -31,7 +31,7 @@ th,td{ padding:6px; border-bottom:1px solid #24304d; text-align:left; }
   <h2>Iniciar sesión</h2>
   <label>Usuario<br><input id="u" autocomplete="username"></label><br><br>
   <label>Contraseña<br><input id="p" type="password" autocomplete="current-password"></label><br><br>
-  <button class="primary" onclick="login()">Entrar</button>
+  <button id="btnLogin" type="button" class="primary" onclick="login()">Entrar</button>
   <p style="color:var(--muted); font-size:12px">Admin: admin/123456 · Cajero: cajero/1234</p>
 </div>
 
@@ -276,6 +276,26 @@ if (__mesasTimer) clearInterval(__mesasTimer);
 __mesasTimer = setInterval(cargarMesas, 5000);
   await cargarSucursales();
 }
+// --- Enlazar botón y tecla Enter al login (backup confiable) ---
+window.addEventListener('DOMContentLoaded', () => {
+  // Click al botón
+  document.getElementById('btnLogin')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    login();
+  });
+
+  // Enter en cualquiera de los dos inputs
+  const u = document.getElementById('u');
+  const p = document.getElementById('p');
+  [u, p].forEach(inp => {
+    inp?.addEventListener('keyup', (ev) => {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        login();
+      }
+    });
+  });
+});
 function logout(){ localStorage.removeItem('token'); location.reload(); }
 
 async function cargarSucursales(){
