@@ -428,6 +428,23 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   });
 });
+// Hacer visible login() para onclick="login()"
+window.login = login;
+
+// Agregar el click del botón DENTRO DEL MISMO DOMContentLoaded que ya tenés arriba
+window.addEventListener('DOMContentLoaded', () => {
+  // Click del botón "Entrar"
+  const btn = document.getElementById('btnLogin');
+  if (btn) {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      login();
+    });
+  }
+
+  // OJO: NO repitas aquí el listener de Enter si ya lo tenés más arriba.
+  // (En tu archivo ya existe el bloque que agrega keyup Enter a #u y #p)
+});
 function logout(){ localStorage.removeItem('token'); location.reload(); }
 
 async function cargarSucursales(){
