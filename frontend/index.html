@@ -171,9 +171,12 @@ let __invFiltro = 'TODOS'; // 'TODOS' | 'FAV'
 
 async function cargarInventario() {
   try {
-    const url = (__invFiltro === 'FAV')
-      ? '/api/productos?favoritos=true'
-      : '/api/productos';
+    // Traer productos con costo desde el endpoint de ADMIN
+const j = await api.fetch('/api/admin/productos');
+let data = Array.isArray(j.data) ? j.data : [];
+// Mantén el filtro Favoritos desde el front
+if (__invFiltro === 'FAV') data = data.filter(x => x.favorito);
+renderInventario(data);
 
     const j = await api.fetch(url);
 
