@@ -202,38 +202,44 @@ async function cargarInventario() {
   }
 }
 
+// ... (deja todo lo demás como está)
+
 function renderInventario(lista) {
   const tbody = document.querySelector('#tablaInventario tbody');
   if (!tbody) { console.error('No existe #tablaInventario tbody'); return; }
 
   tbody.innerHTML = '';
-  if (!lista.length) return;
+  if (!Array.isArray(lista) || !lista.length) return;
 
   for (const p of lista) {
     const tr = document.createElement('tr');
+
     const precio = Number(p.precio ?? 0);
     const costo  = Number(p.costo ?? 0);
     const margen = (precio > 0) ? (((precio - costo) / precio) * 100).toFixed(1) : '0.0';
     const favBool = isFav(p);
     const favLbl  = favBool ? 'Quitar fav' : 'Marcar fav';
 
-
-tr.innerHTML = `
-  <td>${p.id ?? ''}</td>
-  <td>${p.codigo ?? ''}</td>
-  <td>${p.nombre ?? ''}</td>
-  <td>${precio.toFixed(2)}</td>
-  <td>${costo.toFixed(2)}</td>
-  <td>${margen}</td>
-  <td>${Number(p.stock ?? 0)}</td>
-  <td>${Number(p.stock_min ?? 0)}</td>
- <td>
-  <a href="#" onclick="return uiEditarProd(${p.id})">Editar</a> |
-  <a href="#" onclick="return uiToggleFav(${p.id}, ${favBool})">${favLbl}</a>
-</td>
+    tr.innerHTML = `
+      <td>${p.id ?? ''}</td>
+      <td>${p.codigo ?? ''}</td>
+      <td>${p.nombre ?? ''}</td>
+      <td>${precio.toFixed(2)}</td>
+      <td>${costo.toFixed(2)}</td>
+      <td>${margen}</td>
+      <td>${Number(p.stock ?? 0)}</td>
+      <td>${Number(p.stock_min ?? 0)}</td>
+      <td>
+        <a href="#" onclick="return uiEditarProd(${p.id})">Editar</a> |
+        <a href="#" onclick="return uiToggleFav(${p.id}, ${favBool})">${favLbl}</a>
+      </td>
+    `;
     tbody.appendChild(tr);
   }
 }
+
+// ... (deja el resto igual)
+</script>
 
 function invMostrarTodos() {
   __invFiltro = 'TODOS';
