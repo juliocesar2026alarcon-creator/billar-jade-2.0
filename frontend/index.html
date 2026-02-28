@@ -237,7 +237,7 @@ function renderInventario(lista){
 }
 
 // ... (deja el resto igual)
-</script>
+
 
 function invMostrarTodos() {
   __invFiltro = 'TODOS';
@@ -466,8 +466,7 @@ function money(n){ return Number(n).toFixed(2)+' Bs'; }
 async function cargarAlertas(){ const j=await api.fetch('/api/inventario/alertas'); const box=document.getElementById('alertas'); if((j.data||[]).length){ box.classList.remove('hidden'); box.textContent='Stock bajo: '+j.data.map(a=>`${a.nombre}(${a.stock})`).join(', ');} else { box.classList.add('hidden'); box.textContent=''; } }
 async function cargarProductosVista(){ await cargarProductos(false); }
 async function cargarReportes(){ const j=await api.fetch('/api/admin/reportes/ventas'); const tb=document.getElementById('rep'); tb.innerHTML=''; (j.data||[]).forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${new Date(r.ts).toLocaleString()}</td><td>${r.mesa_id}</td><td>${r.usuario}</td><td>${r.metodo_pago}</td><td>${money(r.total)}</td>`; tb.appendChild(tr); }); }
-</script>
-<script>
+
 /* Login de rescate: ignora errores del primer <script> y hace funcionar el botón */
 (function () {
   function $(id){ return document.getElementById(id); }
