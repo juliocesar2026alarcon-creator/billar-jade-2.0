@@ -218,7 +218,7 @@ function renderInventario(lista){
     const favLbl = fav ? 'Quitar fav' : 'Marcar fav';
 
     const tr = document.createElement('tr');
-    tr.innerHTML = `
+    tr.innerHTML =
       '<td>' + (p && p.id != null ? p.id : '') + '</td>' +
       '<td>' + (p && p.codigo != null ? p.codigo : '') + '</td>' +
       '<td>' + (p && p.nombre != null ? p.nombre : '') + '</td>' +
@@ -231,7 +231,7 @@ function renderInventario(lista){
         '#Editar</a> | ' +
         '#' + favLbl + '</a>' +
       '</td>';
-`;
+
     tbody.appendChild(tr);
   }
 }
