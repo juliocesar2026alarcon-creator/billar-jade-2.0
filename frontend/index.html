@@ -467,5 +467,93 @@ async function cargarAlertas(){ const j=await api.fetch('/api/inventario/alertas
 async function cargarProductosVista(){ await cargarProductos(false); }
 async function cargarReportes(){ const j=await api.fetch('/api/admin/reportes/ventas'); const tb=document.getElementById('rep'); tb.innerHTML=''; (j.data||[]).forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${new Date(r.ts).toLocaleString()}</td><td>${r.mesa_id}</td><td>${r.usuario}</td><td>${r.metodo_pago}</td><td>${money(r.total)}</td>`; tb.appendChild(tr); }); }
 </script>
+<script>
+/* Login de rescate: ignora errores del primer <script> y hace funcionar el botón */
+(function () {
+  function $(id){ return document.getElementById(id); }
+
+  async function loginRescate(){
+    try{
+      const usuario  = $('u')?.value?.trim() || '';
+      const password = $('p')?.value || '';
+
+      const r = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({ usuario, password })
+      });
+      let j = {};
+      try { j = await r.json(); } catch(e){}
+
+      if (!r.ok || !j.ok){
+        alert(j?.error || 'No se pudo iniciar sesión');
+        return;
+      }
+
+      // guardar token y mostrar app
+      localStorage.setItem('token', j.token);
+
+      $('login')?.classList?.add('hidden');
+      $('app')?.classList?.remove('hidden');
+      const rol = j?.user?.rol || '';
+      ($('rolBadge')||{}).textContent = rol;
+
+      // botones admin
+      const invBtns = $('invAdminBtns');
+      if (invBtns){
+        invBtns.classList.toggle('hidden', !(rol === 'ADMIN'));
+      }
+
+      // carga básica de sucursales (suave, por si el otro script está roto)
+      try{
+        const r2 = await fetch('/api/sucursales', {
+          headers: { 'Authorization': 'Bearer ' + j.token }
+        });
+        const s = await r2.json();
+        const sel = $('sucursal');
+        if (sel && Array.isArray(s?.data) && s.data.length){
+          sel.innerHTML = '';
+          s.data.forEach(x=>{
+            const o = document.createElement('option');
+            o.value = x.id;
+            o.textContent = x.nombre;
+            sel.appendChild(o);
+          });
+          sel.value = s.data[0].id;
+        }
+      }catch(e){ /* no bloquea el login */ }
+
+      // Si tu primer script no se ejecutó, al menos quedaste dentro de la app con token
+      // y podés navegar a Inventario, etc. (el resto lo arreglamos luego con calma)
+    }catch(e){
+      console.error(e);
+      alert('Error de login');
+    }
+  }
+
+  // Publicar función y enganchar eventos (click + Enter)
+  window.login = loginRescate;
+
+  document.addEventListener('DOMContentLoaded', function(){
+    const btn = $('btnLogin');
+    if (btn){
+      btn.addEventListener('click', function(ev){
+        ev.preventDefault();
+        loginRescate();
+      });
+    }
+    const u = $('u'), p = $('p');
+    [u,p].forEach(inp=>{
+      if (!inp) return;
+      inp.addEventListener('keyup', function(ev){
+        if (ev.key === 'Enter'){
+          ev.preventDefault();
+          loginRescate();
+        }
+      });
+    });
+  });
+})();
+</script>
 </body>
 </html>
