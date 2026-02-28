@@ -201,7 +201,7 @@ async function cargarInventario() {
 }
 
 // ... (deja todo lo demás como está)
-/* ==== OFF: renderInventario (temporal) ====
+
 function renderInventario(lista) {
   const tbody = document.querySelector('#tablaInventario tbody');
   if (!tbody) return;
@@ -234,7 +234,7 @@ function renderInventario(lista) {
     tbody.appendChild(tr);
   }
 }
-==== OFF END ==== */
+
 // ... (deja el resto igual)
 
 
@@ -303,7 +303,7 @@ function ver(v){
   document.getElementById('vista-inventario').classList.add('hidden');
   document.getElementById('vista-reportes').classList.add('hidden');
   if(v==='caja'){ document.getElementById('vista-caja').classList.remove('hidden'); }
-  if(v==='inventario'){ document.getElementById('vista-inventario').classList.remove('hidden'); cargarProductos(false); }
+  if(v==='inventario'){ document.getElementById('vista-inventario').classList.remove('hidden'); cargarInventario(); }
   if(v==='reportes'){ document.getElementById('vista-reportes').classList.remove('hidden'); cargarReportes(); }
 }
 
