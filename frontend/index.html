@@ -173,6 +173,14 @@ let __mesaTimer = null;
 // --- Inventario (listar + pintar + botones) ---
 
 let __invFiltro = 'TODOS'; // 'TODOS' | 'FAV'
+  // cache para acciones por fila (se llena en cargarInventario)
+let __invData = [];
+
+// favorito robusto: true/1/'1'/'t'/'true'
+function isFav(p){
+  const v = p?.favorito;
+  return v === true || v === 1 || v === '1' || v === 't' || v === 'true';
+}
   // cache para acciones por fila
 let __invData = [];
 
@@ -184,14 +192,14 @@ function isFav(p){
 
 async function cargarInventario() {
   try {
-    // Trae productos (con costo) desde ADMIN
+    // Traer lista completa (admin incluye costo)
     const j = await api.fetch('/api/admin/productos');
     __invData = Array.isArray(j?.data) ? j.data : [];
 
-    // mostrar solo activos
+    // Mostrar solo activos
     let data = __invData.filter(p => p.activo !== false);
 
-    // Filtro Favoritos desde el front
+    // Aplicar filtro Favoritos si corresponde
     if (__invFiltro === 'FAV') data = data.filter(isFav);
 
     renderInventario(data);
@@ -213,6 +221,9 @@ function renderInventario(lista) {
     const precio = Number(p.precio ?? 0);
     const costo  = Number(p.costo ?? 0);
     const margen = (precio > 0) ? (((precio - costo) / precio) * 100).toFixed(1) : '0.0';
+    const favBool = isFav(p);
+    const favLbl  = favBool ? 'Quitar fav' : 'Marcar fav';
+
 
 tr.innerHTML = `
   <td>${p.id ?? ''}</td>
@@ -223,10 +234,12 @@ tr.innerHTML = `
   <td>${margen}</td>
   <td>${Number(p.stock ?? 0)}</td>
   <td>${Number(p.stock_min ?? 0)}</td>
-  <td>
-    #Editar</a> |
-    #${(p.favorito ? 'Quitar fav' : 'Marcar fav')}</a>
-  </td>
+ <td>
+  #Editar</a> |
+  #
+    ${favLbl}
+  </a>
+</td>
 `;
     tbody.appendChild(tr);
   }
@@ -235,10 +248,14 @@ tr.innerHTML = `
 function invMostrarTodos() {
   __invFiltro = 'TODOS';
   cargarInventario();
+  document.querySelector('button[onclick="invMostrarTodos()"]')?.classList.add('primary');
+  document.querySelector('button[onclick="invMostrarFavoritos()"]')?.classList.remove('primary');
 }
 function invMostrarFavoritos() {
   __invFiltro = 'FAV';
   cargarInventario();
+  document.querySelector('button[onclick="invMostrarFavoritos()"]')?.classList.add('primary');
+  document.querySelector('button[onclick="invMostrarTodos()"]')?.classList.remove('primary');
 }
 
 // --- Movimientos rápidos (solo ADMIN). Luego lo cambiamos por modal/selector.
