@@ -1,4 +1,5 @@
 
+
 <!doctype html>
 <html lang="es">
 <head>
@@ -148,18 +149,19 @@ const api = {
       return { ok: false, unauth: true };
     }
 
-    // Si hay token (ya logueado) y da 401, cerrar sesión limpia.
+    // Si hay token (ya logueado) y da 401, ahí sí cerrar sesión limpia.
     if (r.status === 401 && token) {
+      // Opcional: mostrar un toast ligero en lugar de alert bloqueante
       console.warn('Sesión vencida, reiniciando login');
-      if (typeof logout === 'function') logout();
+      logout();
       return { ok: false, unauth: true };
     }
 
     // Manejo de otras respuestas no 2xx
     if (!r.ok) {
-      try {
-        const err = await r.json();
-        return err;
+      try { 
+        const err = await r.json(); 
+        return err; 
       } catch {
         return { ok: false, error: 'Error de red' };
       }
@@ -172,25 +174,25 @@ let __mesaTimer = null;
 // --- Inventario (listar + pintar + botones) ---
 
 let __invFiltro = 'TODOS'; // 'TODOS' | 'FAV'
- 
   // cache para acciones por fila
 let __invData = [];
 
 // favorito robusto: acepta true/1/'1'/'t'/'true'
 function isFav(p){
   const v = p?.favorito;
-  return v === true || v === 1 || v === '1' || v === 't' || v === 'true'; }
+  return v === true || v === 1 || v === '1' || v === 't' || v === 'true';
+}
 
 async function cargarInventario() {
   try {
-    // Traer lista completa (admin incluye costo)
+    // Trae productos (con costo) desde ADMIN
     const j = await api.fetch('/api/admin/productos');
     __invData = Array.isArray(j?.data) ? j.data : [];
 
-    // Mostrar solo activos
+    // mostrar solo activos
     let data = __invData.filter(p => p.activo !== false);
 
-    // Aplicar filtro Favoritos si corresponde
+    // Filtro Favoritos desde el front
     if (__invFiltro === 'FAV') data = data.filter(isFav);
 
     renderInventario(data);
@@ -200,55 +202,44 @@ async function cargarInventario() {
   }
 }
 
-// ... (deja todo lo demás como está)
-
 function renderInventario(lista) {
   const tbody = document.querySelector('#tablaInventario tbody');
-  if (!tbody) return;
+  if (!tbody) { console.error('No existe #tablaInventario tbody'); return; }
 
   tbody.innerHTML = '';
-  if (!Array.isArray(lista) || !lista.length) return;
+  if (!lista.length) return;
 
   for (const p of lista) {
-    const precio = Number(p && p.precio != null ? p.precio : 0);
-    const costo  = Number(p && p.costo  != null ? p.costo  : 0);
-    const margen = precio > 0 ? (((precio - costo) / precio) * 100).toFixed(1) : '0.0';
-    const fav    = (p && (p.favorito === true || p.favorito === 1 || p.favorito === '1' || p.favorito === 't' || p.favorito === 'true'));
-    const favLbl = fav ? 'Quitar fav' : 'Marcar fav';
-
     const tr = document.createElement('tr');
-    tr.innerHTML =
-      '<td>' + (p && p.id != null ? p.id : '') + '</td>' +
-      '<td>' + (p && p.codigo != null ? p.codigo : '') + '</td>' +
-      '<td>' + (p && p.nombre != null ? p.nombre : '') + '</td>' +
-      '<td>' + precio.toFixed(2) + '</td>' +
-      '<td>' + costo.toFixed(2) + '</td>' +
-      '<td>' + margen + '</td>' +
-      '<td>' + (p && p.stock != null ? Number(p.stock) : 0) + '</td>' +
-      '<td>' + (p && p.stock_min != null ? Number(p.stock_min) : 0) + '</td>' +
-      '<td>' +
-        '#Editar</a> | ' +
-        '#' + favLbl + '</a>' +
-      '</td>';
+    const precio = Number(p.precio ?? 0);
+    const costo  = Number(p.costo ?? 0);
+    const margen = (precio > 0) ? (((precio - costo) / precio) * 100).toFixed(1) : '0.0';
 
+tr.innerHTML = `
+  <td>${p.id ?? ''}</td>
+  <td>${p.codigo ?? ''}</td>
+  <td>${p.nombre ?? ''}</td>
+  <td>${precio.toFixed(2)}</td>
+  <td>${costo.toFixed(2)}</td>
+  <td>${margen}</td>
+  <td>${Number(p.stock ?? 0)}</td>
+  <td>${Number(p.stock_min ?? 0)}</td>
+  <td>
+    #Editar</a> |
+    #${(p.favorito ? 'Quitar fav' : 'Marcar fav')}</a>
+  </td>
+`;
     tbody.appendChild(tr);
   }
 }
 
-// ... (deja el resto igual)
-
-
 function invMostrarTodos() {
   __invFiltro = 'TODOS';
   cargarInventario();
-  document.querySelector('button[onclick="invMostrarTodos()"]')?.classList.add('primary');
-  document.querySelector('button[onclick="invMostrarFavoritos()"]')?.classList.remove('primary');
 }
 function invMostrarFavoritos() {
   __invFiltro = 'FAV';
   cargarInventario();
-  document.querySelector('button[onclick="invMostrarFavoritos()"]')?.classList.add('primary');
-  document.querySelector('button[onclick="invMostrarTodos()"]')?.classList.remove('primary');
 }
 
 // --- Movimientos rápidos (solo ADMIN). Luego lo cambiamos por modal/selector.
@@ -303,7 +294,7 @@ function ver(v){
   document.getElementById('vista-inventario').classList.add('hidden');
   document.getElementById('vista-reportes').classList.add('hidden');
   if(v==='caja'){ document.getElementById('vista-caja').classList.remove('hidden'); }
-  if(v==='inventario'){ document.getElementById('vista-inventario').classList.remove('hidden'); cargarInventario(); }
+  if(v==='inventario'){ document.getElementById('vista-inventario').classList.remove('hidden'); cargarProductos(false); }
   if(v==='reportes'){ document.getElementById('vista-reportes').classList.remove('hidden'); cargarReportes(); }
 }
 
@@ -337,23 +328,19 @@ __mesaTimer = setInterval(cargarMesas, 5000);
 // Hacer visible login() para onclick="login()"
 window.login = login;
 
-// Click del botón y tecla Enter (un solo DOMContentLoaded)
-window.addEventListener('DOMContentLoaded', function(){
-  // Click del botón "Entrar"
-  var btn = document.getElementById('btnLogin');
-  if (btn) {
-    btn.addEventListener('click', function(e){
-      e.preventDefault();
-      login();
-    });
-  }
+// --- Enlazar botón y tecla Enter al login (backup confiable) ---
+window.addEventListener('DOMContentLoaded', () => {
+  // Click del botón
+  document.getElementById('btnLogin')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    login();
+  });
 
-  // Enter en usuario y contraseña
-  var u = document.getElementById('u');
-  var p = document.getElementById('p');
-  [u, p].forEach(function(inp){
-    if (!inp) return;
-    inp.addEventListener('keyup', function(ev){
+  // Enter en usuario/contraseña
+  const u = document.getElementById('u');
+  const p = document.getElementById('p');
+  [u, p].forEach(inp => {
+    inp?.addEventListener('keyup', (ev) => {
       if (ev.key === 'Enter') {
         ev.preventDefault();
         login();
@@ -465,93 +452,6 @@ function money(n){ return Number(n).toFixed(2)+' Bs'; }
 async function cargarAlertas(){ const j=await api.fetch('/api/inventario/alertas'); const box=document.getElementById('alertas'); if((j.data||[]).length){ box.classList.remove('hidden'); box.textContent='Stock bajo: '+j.data.map(a=>`${a.nombre}(${a.stock})`).join(', ');} else { box.classList.add('hidden'); box.textContent=''; } }
 async function cargarProductosVista(){ await cargarProductos(false); }
 async function cargarReportes(){ const j=await api.fetch('/api/admin/reportes/ventas'); const tb=document.getElementById('rep'); tb.innerHTML=''; (j.data||[]).forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${new Date(r.ts).toLocaleString()}</td><td>${r.mesa_id}</td><td>${r.usuario}</td><td>${r.metodo_pago}</td><td>${money(r.total)}</td>`; tb.appendChild(tr); }); }
-
-/* Login de rescate: ignora errores del primer <script> y hace funcionar el botón */
-(function () {
-  function $(id){ return document.getElementById(id); }
-
-  async function loginRescate(){
-    try{
-      const usuario  = $('u')?.value?.trim() || '';
-      const password = $('p')?.value || '';
-
-      const r = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify({ usuario, password })
-      });
-      let j = {};
-      try { j = await r.json(); } catch(e){}
-
-      if (!r.ok || !j.ok){
-        alert(j?.error || 'No se pudo iniciar sesión');
-        return;
-      }
-
-      // guardar token y mostrar app
-      localStorage.setItem('token', j.token);
-
-      $('login')?.classList?.add('hidden');
-      $('app')?.classList?.remove('hidden');
-      const rol = j?.user?.rol || '';
-      ($('rolBadge')||{}).textContent = rol;
-
-      // botones admin
-      const invBtns = $('invAdminBtns');
-      if (invBtns){
-        invBtns.classList.toggle('hidden', !(rol === 'ADMIN'));
-      }
-
-      // carga básica de sucursales (suave, por si el otro script está roto)
-      try{
-        const r2 = await fetch('/api/sucursales', {
-          headers: { 'Authorization': 'Bearer ' + j.token }
-        });
-        const s = await r2.json();
-        const sel = $('sucursal');
-        if (sel && Array.isArray(s?.data) && s.data.length){
-          sel.innerHTML = '';
-          s.data.forEach(x=>{
-            const o = document.createElement('option');
-            o.value = x.id;
-            o.textContent = x.nombre;
-            sel.appendChild(o);
-          });
-          sel.value = s.data[0].id;
-        }
-      }catch(e){ /* no bloquea el login */ }
-
-      // Si tu primer script no se ejecutó, al menos quedaste dentro de la app con token
-      // y podés navegar a Inventario, etc. (el resto lo arreglamos luego con calma)
-    }catch(e){
-      console.error(e);
-      alert('Error de login');
-    }
-  }
-
-  // Publicar función y enganchar eventos (click + Enter)
-  window.login = loginRescate;
-
-  document.addEventListener('DOMContentLoaded', function(){
-    const btn = $('btnLogin');
-    if (btn){
-      btn.addEventListener('click', function(ev){
-        ev.preventDefault();
-        loginRescate();
-      });
-    }
-    const u = $('u'), p = $('p');
-    [u,p].forEach(inp=>{
-      if (!inp) return;
-      inp.addEventListener('keyup', function(ev){
-        if (ev.key === 'Enter'){
-          ev.preventDefault();
-          loginRescate();
-        }
-      });
-    });
-  });
-})();
 </script>
 </body>
 </html>
