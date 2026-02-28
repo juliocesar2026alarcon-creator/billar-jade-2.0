@@ -228,12 +228,9 @@ tr.innerHTML = `
   <td>${Number(p.stock ?? 0)}</td>
   <td>${Number(p.stock_min ?? 0)}</td>
  <td>
-  #Editar</a> |
-  #
-    ${favLbl}
-  </a>
+  <a href="#" onclick="return uiEditarProd(${p.id})">Editar</a> |
+  <a href="#" onclick="return uiToggleFav(${p.id}, ${favBool})">${favLbl}</a>
 </td>
-`;
     tbody.appendChild(tr);
   }
 }
