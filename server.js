@@ -51,67 +51,7 @@ app.get('/api/health', async (req, res) => {
 app.use('/api/auth',  authRoutes);
 app.use('/api',       coreRoutes);
 app.use('/api/admin', adminRoutes);
-// ===== MANTENIMIENTO TEMPORAL (borrar al final) =====
-const { Pool } = require('pg');
-const maintPool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-// 1) Ver mesas por sucursal (dump)
-app.get('/__maintenance__/dump_mesas', async (req, res) => {
-  if ((req.query.pin || '') !== '9999') return res.status(403).send('Forbidden');
-  try {
-    const sid = Number(req.query.sucursal_id) || null;
-    const sql = sid
-      ? 'select id, sucursal_id, codigo, coalesce(estado, \'(null)\') as estado, coalesce(activo, false) as activo from mesas where sucursal_id=$1 order by codigo'
-      : 'select id, sucursal_id, codigo, coalesce(estado, \'(null)\') as estado, coalesce(activo, false) as activo from mesas order by sucursal_id, codigo';
-    const r = await maintPool.query(sql, sid ? [sid] : []);
-    res.json({ ok: true, count: r.rowCount, data: r.rows });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ ok:false, error: e.message });
-  }
-});
-
-// 2) Normalizar todas las mesas: estado/libre y activo/true
-app.post('/__maintenance__/fix_mesas', async (req, res) => {
-  if ((req.query.pin || '') !== '9999') return res.status(403).send('Forbidden');
-  try {
-    const a = await maintPool.query(`update mesas set estado='libre' where estado is null or trim(estado)=''`);
-    const b = await maintPool.query(`update mesas set activo=true where activo is distinct from true`);
-    res.json({ ok: true, set_estado:a.rowCount, set_activo:b.rowCount });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ ok:false, error: e.message });
-  }
-});
-
-// 3) Asegurar N mesas en una sucursal (crea faltantes M01..MN)
-app.post('/__maintenance__/ensure_mesas', async (req, res) => {
-  if ((req.query.pin || '') !== '9999') return res.status(403).send('Forbidden');
-  try {
-    const sid = Number(req.query.sucursal_id);
-    const n   = Number(req.query.n || 10);
-    if (!sid) return res.status(400).json({ ok:false, error:'sucursal_id requerido' });
-
-    const r0 = await maintPool.query(`select codigo from mesas where sucursal_id=$1`, [sid]);
-    const have = new Set(r0.rows.map(r=>r.codigo));
-    const toCreate = [];
-    for (let i=1;i<=n;i++){
-      const code = 'M' + String(i).padStart(2,'0');
-      if (!have.has(code)) toCreate.push(code);
-    }
-    for (const code of toCreate){
-      await maintPool.query(
-        `insert into mesas (sucursal_id, codigo, estado, activo) values ($1, $2, 'libre', true)`,
-        [sid, code]
-      );
-    }
-    res.json({ ok:true, created: toCreate.length, codes: toCreate });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ ok:false, error: e.message });
-  }
-});
-// ===== FIN MANTENIMIENTO TEMPORAL =====
 // Frontend estático
 app.use('/', express.static(path.join(__dirname, 'frontend')));
 
