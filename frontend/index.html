@@ -135,7 +135,7 @@ th,td{ padding:6px; border-bottom:1px solid #24304d; text-align:left; }
 </div></div>
 
 <script>
-const api = {
+const api = {...})
   async fetch(path, opts = {}) {
     const token = localStorage.getItem('token');
     opts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
@@ -180,8 +180,7 @@ let __invData = [];
 // favorito robusto: acepta true/1/'1'/'t'/'true'
 function isFav(p){
   const v = p?.favorito;
-  return v === true || v === 1 || v === '1' || v === 't' || v === 'true';
-}
+  return v === true || v === 1 || v === '1' || v === 't' || v === 'true'; }
 
 async function cargarInventario() {
   try {
@@ -204,36 +203,35 @@ async function cargarInventario() {
 
 // ... (deja todo lo demás como está)
 
-function renderInventario(lista) {
+function renderInventario(lista){
   const tbody = document.querySelector('#tablaInventario tbody');
-  if (!tbody) { console.error('No existe #tablaInventario tbody'); return; }
+  if (!tbody) return;
 
   tbody.innerHTML = '';
   if (!Array.isArray(lista) || !lista.length) return;
 
   for (const p of lista) {
+    const precio = Number(p && p.precio != null ? p.precio : 0);
+    const costo  = Number(p && p.costo  != null ? p.costo  : 0);
+    const margen = precio > 0 ? (((precio - costo) / precio) * 100).toFixed(1) : '0.0';
+    const fav    = (p && (p.favorito === true || p.favorito === 1 || p.favorito === '1' || p.favorito === 't' || p.favorito === 'true'));
+    const favLbl = fav ? 'Quitar fav' : 'Marcar fav';
+
     const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + (p && p.id != null ? p.id : '') + '</td>' +
+      '<td>' + (p && p.codigo != null ? p.codigo : '') + '</td>' +
+      '<td>' + (p && p.nombre != null ? p.nombre : '') + '</td>' +
+      '<td>' + precio.toFixed(2) + '</td>' +
+      '<td>' + costo.toFixed(2) + '</td>' +
+      '<td>' + margen + '</td>' +
+      '<td>' + (p && p.stock != null ? Number(p.stock) : 0) + '</td>' +
+      '<td>' + (p && p.stock_min != null ? Number(p.stock_min) : 0) + '</td>' +
+      '<td>' +
+        '#Editar</a> | ' +
+        '#' + favLbl + '</a>' +
+      '</td>';
 
-    const precio = Number(p.precio ?? 0);
-    const costo  = Number(p.costo ?? 0);
-    const margen = (precio > 0) ? (((precio - costo) / precio) * 100).toFixed(1) : '0.0';
-    const favBool = isFav(p);
-    const favLbl  = favBool ? 'Quitar fav' : 'Marcar fav';
-
-    tr.innerHTML = `
-      <td>${p.id ?? ''}</td>
-      <td>${p.codigo ?? ''}</td>
-      <td>${p.nombre ?? ''}</td>
-      <td>${precio.toFixed(2)}</td>
-      <td>${costo.toFixed(2)}</td>
-      <td>${margen}</td>
-      <td>${Number(p.stock ?? 0)}</td>
-      <td>${Number(p.stock_min ?? 0)}</td>
-      <td>
-        <a href="#" onclick="return uiEditarProd(${p.id})">Editar</a> |
-        <a href="#" onclick="return uiToggleFav(${p.id}, ${favBool})">${favLbl}</a>
-      </td>
-    `;
     tbody.appendChild(tr);
   }
 }
