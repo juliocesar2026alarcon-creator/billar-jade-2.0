@@ -173,14 +173,7 @@ let __mesaTimer = null;
 // --- Inventario (listar + pintar + botones) ---
 
 let __invFiltro = 'TODOS'; // 'TODOS' | 'FAV'
-  // cache para acciones por fila (se llena en cargarInventario)
-let __invData = [];
-
-// favorito robusto: true/1/'1'/'t'/'true'
-function isFav(p){
-  const v = p?.favorito;
-  return v === true || v === 1 || v === '1' || v === 't' || v === 'true';
-}
+ 
   // cache para acciones por fila
 let __invData = [];
 
