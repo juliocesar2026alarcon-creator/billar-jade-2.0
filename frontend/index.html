@@ -218,7 +218,7 @@ function renderInventario(lista){
     const favLbl = fav ? 'Quitar fav' : 'Marcar fav';
 
     const tr = document.createElement('tr');
-    tr.innerHTML =
+    tr.innerHTML = `
       '<td>' + (p && p.id != null ? p.id : '') + '</td>' +
       '<td>' + (p && p.codigo != null ? p.codigo : '') + '</td>' +
       '<td>' + (p && p.nombre != null ? p.nombre : '') + '</td>' +
@@ -231,7 +231,7 @@ function renderInventario(lista){
         '#Editar</a> | ' +
         '#' + favLbl + '</a>' +
       '</td>';
-
+`;
     tbody.appendChild(tr);
   }
 }
@@ -338,19 +338,23 @@ __mesaTimer = setInterval(cargarMesas, 5000);
 // Hacer visible login() para onclick="login()"
 window.login = login;
 
-// --- Enlazar botón y tecla Enter al login (backup confiable) ---
-window.addEventListener('DOMContentLoaded', () => {
-  // Click del botón
-  document.getElementById('btnLogin')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    login();
-  });
+// Click del botón y tecla Enter (un solo DOMContentLoaded)
+window.addEventListener('DOMContentLoaded', function(){
+  // Click del botón "Entrar"
+  var btn = document.getElementById('btnLogin');
+  if (btn) {
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      login();
+    });
+  }
 
-  // Enter en usuario/contraseña
-  const u = document.getElementById('u');
-  const p = document.getElementById('p');
-  [u, p].forEach(inp => {
-    inp?.addEventListener('keyup', (ev) => {
+  // Enter en usuario y contraseña
+  var u = document.getElementById('u');
+  var p = document.getElementById('p');
+  [u, p].forEach(function(inp){
+    if (!inp) return;
+    inp.addEventListener('keyup', function(ev){
       if (ev.key === 'Enter') {
         ev.preventDefault();
         login();
