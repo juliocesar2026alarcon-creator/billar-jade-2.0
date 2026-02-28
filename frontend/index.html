@@ -135,7 +135,7 @@ th,td{ padding:6px; border-bottom:1px solid #24304d; text-align:left; }
 </div></div>
 
 <script>
-const api = {...})
+const api = {
   async fetch(path, opts = {}) {
     const token = localStorage.getItem('token');
     opts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
@@ -148,19 +148,18 @@ const api = {...})
       return { ok: false, unauth: true };
     }
 
-    // Si hay token (ya logueado) y da 401, ahí sí cerrar sesión limpia.
+    // Si hay token (ya logueado) y da 401, cerrar sesión limpia.
     if (r.status === 401 && token) {
-      // Opcional: mostrar un toast ligero en lugar de alert bloqueante
       console.warn('Sesión vencida, reiniciando login');
-      logout();
+      if (typeof logout === 'function') logout();
       return { ok: false, unauth: true };
     }
 
     // Manejo de otras respuestas no 2xx
     if (!r.ok) {
-      try { 
-        const err = await r.json(); 
-        return err; 
+      try {
+        const err = await r.json();
+        return err;
       } catch {
         return { ok: false, error: 'Error de red' };
       }
